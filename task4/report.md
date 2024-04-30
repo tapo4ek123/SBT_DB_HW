@@ -10,7 +10,7 @@ Starcounter предоставляет три инструмента для вз
  - REST API: в библиотеке есть встроенный HTTP сервер, можно самому реализовать логику работы с БД или сразу писать приложение
 
 ## Engine
-Это in-memory база данных, то есть данные хранятся в оперативной памяти со всеми вытекающими последствиями в виде логов, которые пишутся на диск для восстановления данных после сбоя. Используется какой-то крутой движок, говорят что очень быстрый.
+Starcounter - это in-memory объектно-ориентированная база данных, то есть данные хранятся в оперативной памяти со всеми вытекающими последствиями в виде логов, которые пишутся на диск для восстановления данных после сбоя. Используется какой-то крутой движок, говорят что очень быстрый.
 
 ![](img/Starcounter_architecture.png)
 
@@ -92,3 +92,190 @@ Starcounter это закрытая коммерческая СУБД, разв�
 Документация: https://docs.starcounter.io
 
 GitHub: https://github.com/Starcounter
+
+## Практика
+Starcounter можно установить и на Linux и на Windows и в Docker развернуть можно. Буду действовать по самой простой инструкции, предоставленной в документации: локальная установка на Windows.
+
+Для начала установим `.NET Core 3.0.100`, хотя это и устаревшая версия, в документации Starcounter указана именно она.
+
+Затем скачаем архив с бинарными файлами с официального сайта и разархивируем.
+
+Переходим к созданию .NET приложения. Для этого в командной строке выполним:
+```
+mkdir StarcounterConsoleSample
+cd StarcounterConsoleSample
+
+dotnet new console
+```
+
+![](img/console.png)
+
+Также добавин конфигурационный файл NuGet:
+```
+dotnet new nugetconfig
+```
+
+![](img/nuget.png)
+
+В nuget.config добавим минимальную конфигурацию:
+```
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="local" value="[Starcounter.3.0.0-rc-20191212]" />
+    <add key="Starcounter" value="https://www.myget.org/F/starcounter/api/v2" />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+</configuration>
+```
+
+Вместо `[Starcounter.3.0.0-rc-20191212]` нужно вставить путь до папки с бинарными файлами, я поместил эту папку в `StarcounterConsoleSample` и просто убрал квадратные скобки.
+
+Выполним в командной строке:
+```
+dotnet add package Starcounter.Database --version 3.0.0-*
+```
+
+![](img/pkg.png)
+
+И настройка завершена. Можно приступать к написанию кода.
+
+Код запускаем с помощью команды `dotnet run`.
+
+Зададим схему таблицы:
+```
+[Database]
+public abstract class Worker
+{
+    public abstract string Name { get; set; }
+    public abstract string Surname { get; set; }
+    public abstract int Age { get; set; }
+    public abstract string Position { get; set; }
+}
+```
+
+Теперь создадим строку с параметрами подключения и получим объект, который будет предоставлять службы БД:
+```
+string connectionString =
+    "Database=./.database/StarcounterConsoleSample;"
+    + "OpenMode=CreateIfNotExists;"
+    + "StartMode=StartIfNotRunning;"
+    + "StopMode=IfWeStarted";
+
+using var services = new ServiceCollection()
+    .AddStarcounter(connectionString)
+    .BuildServiceProvider();
+```
+
+Давайте наполним БД:
+```
+var transactor = services.GetRequiredService<ITransactor>();
+
+transactor.Transact(db =>
+{
+    j = db.Insert<Worker>();
+    j.Name = "Jane";
+    j.Surname = "Smith";
+    j.Age = 24;
+    j.Position = "Manager";
+
+    p = db.Insert<Worker>();
+    p.Name = "Paul";
+    p.Surname = "Grey";
+    p.Age = 27;
+    p.Position = "Programmer";
+
+    m = db.Insert<Worker>();
+    m.Name = "Mary";
+    m.Surname = "Peterson";
+    m.Age = 25;
+    m.Position = "Operator";
+
+    b = db.Insert<Worker>();
+    b.Name = "Bob";
+    b.Surname = "Smith";
+    b.Age = 31;
+    b.Position = "Programmer";
+});
+```
+
+Сделаем запрос на выборку:
+```
+transactor.Transact(db =>
+{
+    var list = db.Sql<Worker>
+    (
+        "SELECT w FROM Worker w WHERE Position = ?",
+        "Programmer"
+    );
+
+    foreach (var w in list)
+    {
+        Console.WriteLine(w.Name);
+    }
+});
+```
+
+![](img/select.png)
+
+Теперь обновим какое-нибудь значение:
+```
+transactor.Transact(db =>
+{
+    var bob = db.Sql<Worker>
+    (
+        "SELECT w FROM Worker w WHERE Name = ? AND Position = ?",
+        "Bob",
+        "Programmer"
+    ).FirstOrDefault();
+
+    if (bob != null) {
+        bob.Position = "Lead";
+    }
+
+    var new_bob = db.Sql<Worker>
+    (
+        "SELECT w FROM Worker w WHERE Name = ? AND Position = ?",
+        "Bob",
+        "Lead"
+    ).FirstOrDefault();
+
+    if (new_bob != null) {
+        Console.WriteLine(new_bob.Position);
+    }
+});
+```
+
+![](img/update.png)
+
+И, наконец, удалим запись:
+```
+transactor.Transact(db =>
+{
+    var manager = db.Sql<Worker>
+    (
+        "SELECT w FROM Worker w WHERE Position = ?",
+        "Manager"
+    ).FirstOrDefault();
+    Console.WriteLine(manager.Name);
+    db.Sql<Worker>("DELETE FROM Worker WHERE Position = ?", "Manager");
+    var new_manager = db.Sql<Worker>
+    (
+        "SELECT w FROM Worker w WHERE Position = ?",
+        "Manager"
+    ).FirstOrDefault();
+    if (new_manager == null) {
+        Console.WriteLine("There is no managers");
+    }
+});
+```
+
+![](img/delete.png)
+
+Код со всеми операциями находится в файле `Program.cs`.
+
+## Выводы
+Немного разобрались в том, что представляет из себя СУБД Starcounter, и посмотрели как ей можно пользоваться. В принципе, разобраться в нем на базовом уровне не так уж и сложно.
+
+Starcounter несет новую идею построения веб-приложения, но в реальности, несмотря на то, что у Starcounter есть крупные клиенты, популярной эта СУБД не стала, так же как и её идеи.
