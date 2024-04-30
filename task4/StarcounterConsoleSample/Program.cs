@@ -31,71 +31,71 @@ namespace StarcounterConsoleSample
 
             var transactor = services.GetRequiredService<ITransactor>();
 
-            // transactor.Transact(db =>
-            // {
-            //     j = db.Insert<Worker>();
-            //     j.Name = "Jane";
-            //     j.Surname = "Smith";
-            //     j.Age = 24;
-            //     j.Position = "Manager";
+            transactor.Transact(db =>
+            {
+                j = db.Insert<Worker>();
+                j.Name = "Jane";
+                j.Surname = "Smith";
+                j.Age = 24;
+                j.Position = "Manager";
 
-            //     var p = db.Insert<Worker>();
-            //     p.Name = "Paul";
-            //     p.Surname = "Grey";
-            //     p.Age = 27;
-            //     p.Position = "Programmer";
+                var p = db.Insert<Worker>();
+                p.Name = "Paul";
+                p.Surname = "Grey";
+                p.Age = 27;
+                p.Position = "Programmer";
 
-            //     var m = db.Insert<Worker>();
-            //     m.Name = "Mary";
-            //     m.Surname = "Peterson";
-            //     m.Age = 25;
-            //     m.Position = "Operator";
+                var m = db.Insert<Worker>();
+                m.Name = "Mary";
+                m.Surname = "Peterson";
+                m.Age = 25;
+                m.Position = "Operator";
 
-            //     var b = db.Insert<Worker>();
-            //     b.Name = "Bob";
-            //     b.Surname = "Smith";
-            //     b.Age = 31;
-            //     b.Position = "Programmer";
-            // });
+                var b = db.Insert<Worker>();
+                b.Name = "Bob";
+                b.Surname = "Smith";
+                b.Age = 31;
+                b.Position = "Programmer";
+            });
 
-            // transactor.Transact(db =>
-            // {
-            //     var list = db.Sql<Worker>
-            //     (
-            //         "SELECT w FROM Worker w WHERE Position = ?",
-            //         "Programmer"
-            //     );
+            transactor.Transact(db =>
+            {
+                var list = db.Sql<Worker>
+                (
+                    "SELECT w FROM Worker w WHERE Position = ?",
+                    "Programmer"
+                );
 
-            //     foreach (var w in list)
-            //     {
-            //         Console.WriteLine(w.Name);
-            //     }
-            // });
+                foreach (var w in list)
+                {
+                    Console.WriteLine(w.Name);
+                }
+            });
 
-            // transactor.Transact(db =>
-            // {
-            //     var bob = db.Sql<Worker>
-            //     (
-            //         "SELECT w FROM Worker w WHERE Name = ? AND Position = ?",
-            //         "Bob",
-            //         "Programmer"
-            //     ).FirstOrDefault();
+            transactor.Transact(db =>
+            {
+                var bob = db.Sql<Worker>
+                (
+                    "SELECT w FROM Worker w WHERE Name = ? AND Position = ?",
+                    "Bob",
+                    "Programmer"
+                ).FirstOrDefault();
 
-            //     if (bob != null) {
-            //         bob.Position = "Lead";
-            //     }
+                if (bob != null) {
+                    bob.Position = "Lead";
+                }
 
-            //     var new_bob = db.Sql<Worker>
-            //     (
-            //         "SELECT w FROM Worker w WHERE Name = ? AND Position = ?",
-            //         "Bob",
-            //         "Lead"
-            //     ).FirstOrDefault();
+                var new_bob = db.Sql<Worker>
+                (
+                    "SELECT w FROM Worker w WHERE Name = ? AND Position = ?",
+                    "Bob",
+                    "Lead"
+                ).FirstOrDefault();
 
-            //     if (new_bob != null) {
-            //         Console.WriteLine(new_bob.Position);
-            //     }
-            // });
+                if (new_bob != null) {
+                    Console.WriteLine(new_bob.Position);
+                }
+            });
 
             transactor.Transact(db =>
             {
